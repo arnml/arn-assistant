@@ -2,6 +2,7 @@ import { execFile, exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
 import type Anthropic from '@anthropic-ai/sdk';
+import { RESEARCH_TOOL_DEFINITIONS, executeResearchTool } from '@/research-tools';
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
@@ -20,7 +21,13 @@ export interface ToolResult {
   screenshotBuffer?: Buffer;
 }
 
-/** Tool definitions for the Claude API. */
+/** Context passed to tools that need access to the API client (e.g. plan tool). */
+export interface ToolContext {
+  anthropicClient: Anthropic;
+  conversationMessages: Anthropic.MessageParam[];
+}
+
+/** Tool definitions for the Claude API (computer control + research). */
 export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
   {
     name: 'screenshot',
@@ -62,13 +69,20 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       required: ['path'],
     },
   },
+  ...RESEARCH_TOOL_DEFINITIONS,
 ];
 
 /** Execute a tool by name and return the result. */
 export async function executeTool(
   name: string,
   input: Record<string, unknown>,
+  context?: ToolContext,
 ): Promise<ToolResult> {
+  // Try research tools first (plan, web_search, read_file, write_file)
+  const researchResult = await executeResearchTool(name, input, context);
+  if (researchResult !== null) return researchResult;
+
+  // Computer control tools
   switch (name) {
     case 'screenshot':
       return takeScreenshot();

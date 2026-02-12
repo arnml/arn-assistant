@@ -8,7 +8,8 @@
     "test:memory": "tsx tests/test-memory.ts",
     "test:claude": "tsx tests/test-claude.ts",
     "test:tools": "tsx tests/test-tools.ts",
-    "test:claude-tools": "tsx tests/test-claude-tools.ts"
+    "test:claude-tools": "tsx tests/test-claude-tools.ts",
+    "test:research": "tsx tests/test-research-tools.ts"
   },
   "keywords": [],
   "license": "ISC",

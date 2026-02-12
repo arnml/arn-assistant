@@ -17,7 +17,7 @@ console.log('[Test] Tools module tests\n');
 
 // Test 1: Tool definitions
 console.log('1. Tool definitions');
-assert(TOOL_DEFINITIONS.length === 3, 'has 3 tool definitions');
+assert(TOOL_DEFINITIONS.length === 7, 'has 7 tool definitions');
 assert(TOOL_DEFINITIONS[0].name === 'screenshot', 'first tool is screenshot');
 assert(TOOL_DEFINITIONS[1].name === 'shell', 'second tool is shell');
 assert(TOOL_DEFINITIONS[2].name === 'open_path', 'third tool is open_path');

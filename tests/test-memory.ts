@@ -29,15 +29,15 @@ assert(memory.getHistory(jid).length === 2, 'history has 2 messages');
 assert(memory.getHistory(jid)[0].role === 'user', 'first message is user');
 assert(memory.getHistory(jid)[1].content === 'Hi there!', 'second message content matches');
 
-// Test 3: FIFO eviction at 20 messages
+// Test 3: FIFO eviction at 30 messages
 console.log('3. FIFO eviction');
 memory.clear(jid);
-for (let i = 0; i < 25; i++) {
+for (let i = 0; i < 35; i++) {
   memory.addMessage(jid, 'user', `msg-${i}`);
 }
-assert(memory.getHistory(jid).length === 20, `caps at 20 (got ${memory.getHistory(jid).length})`);
+assert(memory.getHistory(jid).length === 30, `caps at 30 (got ${memory.getHistory(jid).length})`);
 assert(memory.getHistory(jid)[0].content === 'msg-5', 'oldest messages dropped (first is msg-5)');
-assert(memory.getHistory(jid)[19].content === 'msg-24', 'newest message is last');
+assert(memory.getHistory(jid)[29].content === 'msg-34', 'newest message is last');
 
 // Test 4: Separate conversations (phone JID + LID JID)
 console.log('4. Separate conversations');

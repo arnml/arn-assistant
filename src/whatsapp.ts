@@ -27,6 +27,7 @@ type MessageHandler = (jid: string, text: string) => Promise<void>;
 class WhatsAppClient {
   private sock: WASocket | null = null;
   private onMessage: MessageHandler | null = null;
+  private allowedLids = new Set<string>(); // LID JIDs mapped to ALLOWED_NUMBER
 
   /**
    * Start the WhatsApp connection.
@@ -115,13 +116,26 @@ class WhatsAppClient {
     if (jid.endsWith('@g.us') || jid.endsWith('@broadcast')) return;
 
     // Filter: only respond to the allowed number (from .env)
-    // Note: ALLOWED_NUMBER only works with @s.whatsapp.net JIDs, not @lid
     const allowedNumber = process.env.ALLOWED_NUMBER?.replace('+', '');
-    if (allowedNumber && jid.endsWith('@s.whatsapp.net')) {
-      const senderNumber = jid.replace('@s.whatsapp.net', '').split(':')[0];
-      if (senderNumber !== allowedNumber) {
-        console.log(`[WhatsApp] Ignored message from ${senderNumber} (not in ALLOWED_NUMBER)`);
-        return;
+    if (allowedNumber) {
+      if (jid.endsWith('@s.whatsapp.net')) {
+        const senderNumber = jid.replace('@s.whatsapp.net', '').split(':')[0];
+        if (senderNumber !== allowedNumber) {
+          console.log(`[WhatsApp] Ignored message from ${senderNumber} (not ALLOWED_NUMBER)`);
+          return;
+        }
+      } else if (jid.endsWith('@lid')) {
+        // @lid JIDs don't contain phone numbers — remember the first @lid DM
+        // as the allowed user (since they're the only one messaging the bot)
+        if (!this.allowedLids.has(jid)) {
+          if (this.allowedLids.size === 0) {
+            this.allowedLids.add(jid);
+            console.log(`[WhatsApp] Mapped @lid ${jid} to allowed user`);
+          } else {
+            console.log(`[WhatsApp] Ignored @lid message from ${jid} (unknown sender)`);
+            return;
+          }
+        }
       }
     }
 

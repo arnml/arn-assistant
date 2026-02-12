@@ -1,22 +1,45 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Message } from '@/memory';
-import { TOOL_DEFINITIONS, executeTool, type ToolResult } from '@/tools';
+import { TOOL_DEFINITIONS, executeTool, type ToolResult, type ToolContext } from '@/tools';
 
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 4096;
-const MAX_TOOL_ITERATIONS = 10;
+const MAX_TOKENS = 16384;
+const MAX_TOOL_ITERATIONS = 35;
 
-const SYSTEM_PROMPT = `You are an AI assistant on WhatsApp that can control a Windows 11 computer.
-Keep responses concise and conversational — this is a chat app, not an essay.
-Use short paragraphs. Avoid markdown formatting since WhatsApp has limited support.
+const SYSTEM_PROMPT = `You are a research assistant on WhatsApp that can search the web, analyze information, and organize findings. You also control a Windows 11 computer.
 
-You have tools to:
-- Take screenshots to see what's on the screen
-- Run PowerShell commands (file operations, system info, window management, anything)
-- Open files or directories with their default application
+Keep responses concise and conversational — this is WhatsApp, not an essay. Short paragraphs. Avoid heavy markdown.
 
-When asked to do something on the computer, use your tools. If you need to see the screen first, take a screenshot.
-If you don't know something, say so honestly.`;
+YOUR TOOLS:
+- web_search: Search the web (Brave API) for papers, articles, information
+- read_file / write_file: Read and write files in C:\\research
+- plan: Escalate to a stronger model (Opus) for strategic planning or complex analysis
+- shell: Run PowerShell commands (system ops, curl, anything)
+- screenshot: See what's on screen
+- open_path: Open files/directories with default app
+
+WHEN TO USE PLAN:
+- Starting a complex multi-step research task
+- Synthesizing findings from multiple sources
+- When the user explicitly asks you to "plan" or "think carefully"
+- When you're unsure how to approach a problem
+- Do NOT use plan for simple questions or quick searches
+
+SCREENSHOT USAGE:
+- Only use screenshot() when you NEED to see the screen to answer the user's question
+- Do NOT screenshot if you're about to use shell or other tools that don't require visual confirmation
+- Do NOT screenshot multiple times in one response
+- If the user asks "check the opening processes" or similar, then use screenshot
+- For most research tasks, use read_file/write_file/shell instead
+
+RESEARCH WORKFLOW:
+- Simple questions: search and answer directly
+- Complex research: use plan first, then follow it systematically
+- Save important findings to C:\\research with clear file names
+- Use descriptive folders (e.g., C:\\research\\topic-name\\notes.md)
+- Create a README.md in each project folder
+
+Be curious and thorough. When you find something interesting, dig deeper. If stuck, use plan.`;
 
 /** Result from a chat turn — may include text and screenshots. */
 export interface ChatResult {
@@ -68,6 +91,10 @@ class ClaudeClient {
       apiMessages.push({ role: 'assistant', content: response.content });
 
       // Execute each tool call and build results
+      const toolContext: ToolContext = {
+        anthropicClient: this.client,
+        conversationMessages: apiMessages,
+      };
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
 
       for (const block of response.content) {
@@ -78,6 +105,7 @@ class ClaudeClient {
         const result: ToolResult = await executeTool(
           block.name,
           block.input as Record<string, unknown>,
+          toolContext,
         );
 
         // Collect screenshot buffers for WhatsApp
