@@ -1,20 +1,40 @@
 import 'dotenv/config';
-import WhatsAppClient from './whatsapp.js';
-
-// === TEMPORARY ECHO MODE - for testing WhatsApp connection ===
-// Will be replaced with full orchestrator in Step 5
+import WhatsAppClient from '@/whatsapp';
+import ClaudeClient from '@/claude';
+import ConversationMemory from '@/memory';
 
 const wa = new WhatsAppClient();
+const claude = new ClaudeClient();
+const memory = new ConversationMemory();
 
-console.log('[Main] Starting WhatsApp echo test...');
-console.log('[Main] Scan the QR code with your phone to connect.');
-console.log('[Main] Send a message to test - it will echo back.');
-console.log('[Main] Press Ctrl+C to stop.\n');
+async function handleMessage(jid: string, text: string): Promise<void> {
+  try {
+    // Store user message
+    memory.addMessage(jid, 'user', text);
 
-await wa.connect(async (jid: string, text: string) => {
-  console.log(`[Echo] Processing: "${text}" from ${jid}`);
-  await wa.sendMessage(jid, `Echo: ${text}`);
-});
+    // Send conversation history to Claude
+    const history = memory.getHistory(jid);
+    console.log(`[Main] Sending ${history.length} messages to Claude...`);
+
+    const reply = await claude.chat(history);
+
+    // Store assistant reply
+    memory.addMessage(jid, 'assistant', reply);
+
+    // Send reply on WhatsApp
+    await wa.sendMessage(jid, reply);
+  } catch (err) {
+    console.error(`[Main] Error:`, (err as Error).message);
+    try {
+      await wa.sendMessage(jid, 'Sorry, something went wrong. Try again.');
+    } catch {
+      // If we can't even send the error message, just log it
+    }
+  }
+}
+
+console.log('[Main] Starting WhatsApp AI Assistant...');
+await wa.connect(handleMessage);
 
 process.on('SIGINT', () => {
   console.log('\n[Main] Shutting down...');

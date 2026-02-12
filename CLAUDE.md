@@ -45,3 +45,4 @@ data/auth/              - WhatsApp session files (gitignored, auto-created)
 - Callback decoupling: whatsapp.ts doesn't know about Claude
 - TypeScript strict mode for type safety
 - Console logging with `[ModuleName]` prefixes for visibility
+- **Absolute imports**: Use `@/` alias for all project imports (maps to `src/`). Example: `import X from '@/memory'`
