@@ -16,13 +16,20 @@ async function handleMessage(jid: string, text: string): Promise<void> {
     const history = memory.getHistory(jid);
     console.log(`[Main] Sending ${history.length} messages to Claude...`);
 
-    const reply = await claude.chat(history);
+    const result = await claude.chat(history);
 
     // Store assistant reply
-    memory.addMessage(jid, 'assistant', reply);
+    memory.addMessage(jid, 'assistant', result.text);
 
-    // Send reply on WhatsApp
-    await wa.sendMessage(jid, reply);
+    // Send screenshots to WhatsApp first (visual context before text)
+    for (const screenshot of result.screenshots) {
+      await wa.sendImage(jid, screenshot);
+    }
+
+    // Send text reply
+    if (result.text) {
+      await wa.sendMessage(jid, result.text);
+    }
   } catch (err) {
     console.error(`[Main] Error:`, (err as Error).message);
     try {

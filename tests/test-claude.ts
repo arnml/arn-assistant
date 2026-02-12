@@ -5,11 +5,12 @@ const claude = new ClaudeClient();
 
 console.log('[Test] Sending test message to Claude...');
 
-const reply = await claude.chat([
+const { text: reply, screenshots } = await claude.chat([
   { role: 'user', content: 'What is 2 + 2? Reply in one word.' }
 ]);
 
 console.log(`[Test] Claude replied: "${reply}"`);
+console.log(`[Test] Screenshots: ${screenshots.length}`);
 
 if (reply.length > 0) {
   console.log('[Test] Claude test PASSED');

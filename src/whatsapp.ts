@@ -135,6 +135,9 @@ class WhatsAppClient {
 
     console.log(`[WhatsApp] Message from ${jid}: "${text}"`);
 
+    // Mark message as read (blue check marks)
+    await this.sock?.readMessages([msg.key]);
+
     // Call the message handler
     if (this.onMessage) {
       await this.onMessage(jid, text);
@@ -153,6 +156,19 @@ class WhatsAppClient {
     await this.sock.sendMessage(jid, { text });
     const preview = text.length > 80 ? text.substring(0, 80) + '...' : text;
     console.log(`[WhatsApp] Sent to ${jid}: "${preview}"`);
+  }
+
+  /**
+   * Send an image to a WhatsApp JID.
+   */
+  async sendImage(jid: string, image: Buffer, caption?: string): Promise<void> {
+    if (!this.sock) {
+      console.error('[WhatsApp] Cannot send image - not connected');
+      return;
+    }
+
+    await this.sock.sendMessage(jid, { image, caption });
+    console.log(`[WhatsApp] Sent image to ${jid} (${image.length} bytes)`);
   }
 }
 
