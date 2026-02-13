@@ -2,6 +2,7 @@ import 'dotenv/config';
 import WhatsAppClient from '@/whatsapp';
 import ClaudeClient from '@/claude';
 import ConversationMemory from '@/memory';
+import { browserClient } from '@/tools';
 
 const wa = new WhatsAppClient();
 const claude = new ClaudeClient();
@@ -81,7 +82,8 @@ async function handleMessage(jid: string, text: string): Promise<void> {
 console.log('[Main] Starting WhatsApp AI Assistant...');
 await wa.connect(handleMessage);
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n[Main] Shutting down...');
+  await browserClient.close();
   process.exit(0);
 });

@@ -21,6 +21,13 @@ const logger = {
   fatal: (...args: any[]) => console.error('[Baileys]', ...args),
 } as any;
 
+// Suppress Signal protocol "Closing session" spam from console.log
+const _origLog = console.log;
+console.log = (...args: any[]) => {
+  if (typeof args[0] === 'string' && args[0].startsWith('Closing session')) return;
+  _origLog(...args);
+};
+
 // Callback type for incoming messages
 type MessageHandler = (jid: string, text: string) => Promise<void>;
 

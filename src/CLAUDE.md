@@ -43,10 +43,11 @@ WhatsApp message in
 - Model: claude-haiku-4-5-20251001, max 16384 tokens
 
 ### tools.ts
-- `TOOL_DEFINITIONS`: 7 tool schemas (3 computer + 4 research)
+- `TOOL_DEFINITIONS`: 8 tool schemas (3 computer + 1 browser + 4 research)
 - `executeTool(name, input, context?): Promise<ToolResult>`
 - `ToolContext`: `{ anthropicClient, conversationMessages }` — passed to research tools
 - Computer tools: `screenshot`, `shell`, `open_path`
+- Browser tool: `browse_url` — Playwright-powered, delegates to browser.ts
 - Research tools delegated to research-tools.ts
 
 ### research-tools.ts
@@ -57,11 +58,17 @@ WhatsApp message in
 - `read_file(path)` / `write_file(path, content, append?)`: paths relative to `C:\research`
 - Screenshot: DPI-aware, multi-monitor via VirtualScreen (in tools.ts)
 
+### browser.ts
+- Playwright browser automation for web browsing
+- `BrowserClient` class
+- `browse(url, screenshot?): Promise<BrowseResult>` — navigates, extracts page content
+- Headless Chromium, auto-managed lifecycle
+
 ### index.ts
 - Loads dotenv, creates module instances
 - Wires onMessage: memory -> compaction check -> claude -> screenshots -> reply
 - Rate limit (429): compact + wait 10s + retry once
-- Handles errors, graceful shutdown (Ctrl+C)
+- Handles errors, graceful shutdown (Ctrl+C) with browser cleanup
 
 ## Conventions
 - All modules export a default class (except tools.ts, research-tools.ts: named exports)

@@ -3,9 +3,13 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import type Anthropic from '@anthropic-ai/sdk';
 import { RESEARCH_TOOL_DEFINITIONS, executeResearchTool } from '@/research-tools';
+import BrowserClient from '@/browser';
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
+
+/** Singleton browser client — lazy-initialized on first browse_url call. */
+export const browserClient = new BrowserClient();
 
 // Shell command timeout (30 seconds)
 const SHELL_TIMEOUT = 30_000;
@@ -69,6 +73,25 @@ export const TOOL_DEFINITIONS: Anthropic.Tool[] = [
       required: ['path'],
     },
   },
+  {
+    name: 'browse_url',
+    description:
+      'Navigate to a URL using a real browser (Playwright) and extract the page text content. Use this when you need to read a web page, article, or any URL. Optionally take a screenshot of the page.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        url: {
+          type: 'string',
+          description: 'The URL to navigate to.',
+        },
+        screenshot: {
+          type: 'boolean',
+          description: 'Whether to capture a screenshot of the page (default: false).',
+        },
+      },
+      required: ['url'],
+    },
+  },
   ...RESEARCH_TOOL_DEFINITIONS,
 ];
 
@@ -90,6 +113,8 @@ export async function executeTool(
       return runShell(input.command as string);
     case 'open_path':
       return openPath(input.path as string);
+    case 'browse_url':
+      return browseUrl(input.url as string, input.screenshot as boolean | undefined);
     default:
       return { content: `Unknown tool: ${name}` };
   }
@@ -192,6 +217,40 @@ async function openPath(filePath: string): Promise<ToolResult> {
     return { content: `Opened: ${filePath}` };
   } catch (err) {
     const msg = `Failed to open path: ${(err as Error).message}`;
+    console.error(`[Tools] ${msg}`);
+    return { content: msg };
+  }
+}
+
+/** Browse a URL with Playwright and return page content + optional screenshot. */
+async function browseUrl(url: string, screenshot?: boolean): Promise<ToolResult> {
+  try {
+    const result = await browserClient.browse(url, screenshot ?? false);
+
+    const header = `Title: ${result.title}\nURL: ${result.url}\n\n`;
+    const text = header + result.content;
+
+    if (result.screenshotBuffer) {
+      const base64 = result.screenshotBuffer.toString('base64');
+      return {
+        content: [
+          { type: 'text', text },
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/png',
+              data: base64,
+            },
+          },
+        ],
+        screenshotBuffer: result.screenshotBuffer,
+      };
+    }
+
+    return { content: text };
+  } catch (err) {
+    const msg = `Browse failed: ${(err as Error).message}`;
     console.error(`[Tools] ${msg}`);
     return { content: msg };
   }
